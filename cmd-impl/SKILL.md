@@ -1,26 +1,29 @@
 ---
 name: cmd-impl
-description: The loop to implement code
+description: Run the multi-agent implementation and staged-review loop described in this skill. Use only when the user explicitly names `cmd-impl` or explicitly asks to use this skill's described workflow; do not use it for ordinary coding or implementation requests.
 ---
 
 The loop should be orchestrated by Mei. Others should follow their own role.
 To implement code, the loop is described as follows:
 
-1. Spawn two subagents: Elysia and Eden, explicitly tell them to load their coresponding persona skill `persona-<name_in_lowercase>`. Use model `gpt-5.4` with thinking level `high`
-2. By default the task starts from the Elysia to implement the task if not specified.
-3. Once Elysia finished, let Eden to review her implementation or modification.
-4. Once Eden finished as a FALIED result, let Elysia to implement her review report.
-5. Once Eden finished as a PASS result, go to the next stage of review until all are PASS.
+1. Spawn exactly one Elysia subagent at the start of the loop and explicitly tell her to load `persona-elysia`. Reuse this same subagent for every implementation and rework turn so Elysia retains the full loop context.
+2. By default the task starts from Elysia to implement the task if not specified.
+3. Divide the numbered review stages into three Eden groups: stages 1–2, stages 3–4, and stage 5. When the workflow enters a group, spawn exactly one new Eden subagent with no inherited conversation context (`fork_turns: none` or equivalent) and explicitly tell it to load `persona-eden`. Reuse that Eden across every stage and retry within the group.
+4. Give each newly spawned Eden only the current task, review group, relevant constraints, and current implementation artifacts needed for that review. When continuing with the same Eden, provide the current numbered stage, updated implementation artifacts, and any other new information needed for the next review.
+5. Once Eden finishes with a FAILED result, send the reviewed feedback to the persistent Elysia subagent for implementation.
+6. Create a new Eden only when the workflow transitions to a different Eden group. Reuse the stages 1–2 Eden when moving between or retrying stages 1 and 2, reuse the stages 3–4 Eden when moving between or retrying stages 3 and 4, and use a separate Eden for stage 5. If the workflow leaves a group and later returns to it, treat that return as a new group visit and create a new Eden. Each newly created Eden must use `fork_turns: none` or equivalent.
 
-Notice that they do not share the same context, you (Mei) should pass enough information between them. If the task is presented as a proposal or doc file, passing the file path instead of content.
+Elysia keeps her context for the entire loop. Each Eden's context lasts for one continuous visit to an Eden group: reuse it across the group's stages and retries, then discard it when the workflow leaves that group. Returning to a group after leaving it requires a new Eden. Elysia and Eden do not share context, so you (Mei) should pass enough current information between them. If the task is presented as a proposal or doc file, pass the file path instead of its content.
+
+Review every result from Eden before forwarding it to Elysia. Ensure the feedback stays focused on the current implementation goal, and do not let it unnecessarily expand the scope.
 
 The review stages for Eden should be as follows. In every stage you (Mei) should request Eden to review only the scope of the stage.
 
-1. Review if the implementation is good enough and the task(proposal, doc) is fully completed. If failed, back to Elysia and the next review starts from stage 1.
-2. Review the hygiene of code and logic, check if there are dead paths, oder in code or anything not elegant enough. If failed, back to Elysia and the next review starts from stage 1. 
-3. Review if the tests are good enough. If failed, back to Elysia and the next review starts from stage 3. 
-4. Review the hygiene of tests, check if there are useless tests like meaningless nagative checking "somethings doesnt exists", or Texas sharpshooter fallacy, etc. which are usually created during editing the implementation. If failed, back to Elysia and the next review starts from stage 3. 
-5. Review if the notes, docstring, comments and docs is enough. If failed, back to Elysia and the next review starts from stage 5.
+1. Review the hygiene of code and logic with deletion as the primary goal. Identify dead paths, redundant code, unnecessary abstractions, code odor, and anything not elegant enough; prefer removing unnecessary code over adding or rearranging structure. If failed, back to Elysia and the next review starts from stage 1.
+2. Review if the implementation is good enough and the task(proposal, doc) is fully completed. If failed, back to Elysia and the next review starts from stage 1.
+3. Review the hygiene of tests with deletion as the primary goal. Identify and remove redundant, meaningless, or misleading tests, including meaningless negative checks such as "something does not exist" and tests exhibiting the Texas sharpshooter fallacy, especially those introduced while editing the implementation. Prefer removing unnecessary tests over adding or restructuring tests. If failed, back to Elysia and the next review starts from stage 3.
+4. Review if the tests are good enough. If failed, back to Elysia and the next review starts from stage 3.
+5. Review whether the implementation's notes, docstrings, comments, and documentation are sufficient. Treat the proposal as implementation input rather than documentation: do not edit it or request changes to it during this stage. If failed, back to Elysia and the next review starts from stage 5.
 
 Elysia should edit only in the scope of the review report, otherwise she should explicitly report, and you should guide Eden to the coresponding review stage in this case.
 
