@@ -19,7 +19,7 @@ Review every result from Eden before forwarding it to Elysia. Ensure the feedbac
 
 The review stages for Eden should be as follows. In every stage you (Mei) should request Eden to review only the scope of the stage.
 
-1. Review the hygiene of code and logic with deletion as the primary goal. Identify dead paths, redundant code, unnecessary abstractions, code odor, and anything not elegant enough; prefer removing unnecessary code over adding or rearranging structure. If failed, back to Elysia and the next review starts from stage 1.
+1. Review code and logic hygiene, with deletion as the primary goal. Identify dead paths, duplication, unnecessary abstractions, other code smells, and custom code that unnecessarily reimplements functionality already available in the codebase, current dependencies, or a well-established and actively maintained library. If the review fails, return to Elysia and restart at stage 1.
 2. Review if the implementation is good enough and the task(proposal, doc) is fully completed. If failed, back to Elysia and the next review starts from stage 1.
 3. Review the hygiene of tests with deletion as the primary goal. Identify and remove redundant, meaningless, or misleading tests, including meaningless negative checks such as "something does not exist" and tests exhibiting the Texas sharpshooter fallacy, especially those introduced while editing the implementation. Prefer removing unnecessary tests over adding or restructuring tests. If failed, back to Elysia and the next review starts from stage 3.
 4. Review if the tests are good enough. If failed, back to Elysia and the next review starts from stage 3.
